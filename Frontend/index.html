@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Doctor Codiey - Magic Eraser</title>
+
+    <style>
+        /* ================= FONTS ================= */
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('./public/Fonts/SFProDisplay-Bold.woff') format('woff');
+            font-weight: bold;
+        }
+
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('./public/Fonts/SF-Pro-Display-Semibold.woff') format('woff');
+            font-weight: 600;
+        }
+
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('./public/Fonts/SF-Pro-Display-Medium.woff') format('woff');
+            font-weight: 500;
+        }
+
+        @font-face {
+            font-family: 'SF Pro Display';
+            src: url('./public/Fonts/SF-Pro-Display-Regular.woff') format('woff');
+            font-weight: normal;
+        }
+
+        /* ================= BASE STYLES ================= */
+        :root {
+            --text-main: #ffffff;
+            --text-muted: #e0e0e0;
+            --primary: #ffffff;
+            --brush-color: #E91E63;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-color: transparent;
+            /* Changed from black to transparent for background to show */
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            letter-spacing: -0.5px;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            animation: fadeInDown 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ================= PREMIUM GLASSMORPHISM ================= */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow:
+                0 16px 40px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px) saturate(140%);
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            color: var(--text-main);
+            font-family: inherit;
+        }
+
+        .glass-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .glass-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        /* ================= CUSTOM BRUSH CURSOR ================= */
+        .brush-cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            background-color: rgba(233, 30, 99, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.1s ease, width 0.05s ease, height 0.05s ease;
+            box-shadow: 0 0 10px rgba(233, 30, 99, 0.5);
+        }
+
+        .brush-cursor.eraser-mode {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        /* ================= EDITOR BOX ================= */
+        .editor-box {
+            width: 100%;
+            max-width: 550px;
+            height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 25px;
+            cursor: none;
+            flex-shrink: 0;
+        }
+
+        .editor-box.has-image {
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: none;
+            box-shadow: none;
+        }
+
+        .drop-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            transition: opacity 0.3s ease;
+            cursor: default;
+            z-index: 10;
+        }
+
+        .drop-content p {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin: 0;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .select-btn {
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .select-btn img {
+            width: 32px;
+            height: 32px;
+        }
+
+        /* ================= LAYERED CANVAS ================= */
+        .base-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+            border-radius: 36px;
+            transition: opacity 0.5s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        .paint-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.7;
+            z-index: 2;
+            border-radius: 36px;
+            touch-action: none;
+        }
+
+        .mask-canvas {
+            display: none;
+        }
+
+        /* ================= UPLOADING BAR ================= */
+        .dynamic-width-container {
+            width: 100%;
+            max-width: 600px;
+            transition: max-width 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            flex-shrink: 0;
+        }
+
+        .uploading-container {
+            width: 100%;
+            margin-bottom: 30px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .upload-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding: 0 8px;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 14px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.8), #ffffff);
+            border-radius: 10px;
+            transition: width 0.15s ease;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* ================= BRUSH CONTROLS ================= */
+        .brush-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 15px 25px;
+            box-sizing: border-box;
+            border-radius: 50px;
+            animation: fadeInUp 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            width: 100%;
+        }
+
+        .brush-control input[type="range"] {
+            flex-grow: 1;
+            margin: 0 25px;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 8px;
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+            min-width: 100px;
+        }
+
+        .brush-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        #brushSizeVal {
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .tool-btns {
+            display: flex;
+            gap: 8px;
+            margin-left: 20px;
+        }
+
+        .tool-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 18px;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .tool-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .tool-btn.active {
+            color: #000;
+            background: var(--primary);
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+        }
+
+        /* ================= MAIN ACTION BUTTON ================= */
+        .action-btn {
+            width: 100%;
+            max-width: 320px;
+            padding: 18px;
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 30px;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ================= OVERLAY & Animations ================= */
+        .overlay-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            border-radius: 36px;
+        }
+
+        .overlay-wrapper.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .generating-text {
+            position: absolute;
+            bottom: 30px;
+            right: 35px;
+            font-size: 20px;
+            font-weight: 600;
+
+            background-image: linear-gradient(120deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.4) 35%, #ffffff 50%, rgba(255, 255, 255, 0.4) 65%, rgba(255, 255, 255, 0.4) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+
+            animation: shineText 2s linear infinite;
+        }
+
+        @keyframes shineText {
+            0% {
+                background-position: 150% center;
+            }
+
+            100% {
+                background-position: -50% center;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ================= LOADER CSS ================= */
+        .loader {
+            --color-one: #ffbf48;
+            --color-two: #be4a1d;
+            --color-three: #ffbf4780;
+            --color-four: #bf4a1d80;
+            --time-animation: 1.5s;
+            --size: 0.8;
+            position: relative;
+            border-radius: 50%;
+            transform: scale(var(--size));
+            animation: colorize calc(var(--time-animation) * 3) ease-in-out infinite;
+        }
+
+        .loader::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border-top: solid 2px var(--color-one);
+            border-bottom: solid 2px var(--color-two);
+            box-shadow: inset 0 5px 10px 0 var(--color-three), inset 0 -5px 10px 0 var(--color-four);
+        }
+
+        .loader .box {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(180deg, var(--color-one) 30%, var(--color-two) 70%);
+            mask: url(#clipping);
+            -webkit-mask: url(#clipping);
+        }
+
+        .loader svg {
+            position: absolute;
+        }
+
+        .loader svg #clipping {
+            filter: contrast(15);
+            animation: roundness calc(var(--time-animation) / 2) linear infinite;
+        }
+
+        .loader svg #clipping polygon {
+            filter: blur(7px);
+        }
+
+        .loader svg #clipping polygon:nth-child(1) {
+            transform-origin: 75% 25%;
+            transform: rotate(90deg);
+        }
+
+        .loader svg #clipping polygon:nth-child(2) {
+            transform-origin: 50% 50%;
+            animation: rotation var(--time-animation) linear infinite reverse;
+        }
+
+        .loader svg #clipping polygon:nth-child(3) {
+            transform-origin: 50% 60%;
+            animation: rotation var(--time-animation) linear infinite;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes roundness {
+
+            0%,
+            100% {
+                filter: contrast(15);
+            }
+
+            50% {
+                filter: contrast(5);
+            }
+        }
+
+        @keyframes colorize {
+
+            0%,
+            100% {
+                filter: hue-rotate(0deg);
+            }
+
+            50% {
+                filter: hue-rotate(-60deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            .brush-control {
+                flex-direction: column;
+                border-radius: 25px;
+                padding: 15px;
+                gap: 15px;
+            }
+
+            .brush-control input[type="range"] {
+                width: 90%;
+                margin: 0;
+            }
+
+            .tool-btns {
+                margin-left: 0;
+                justify-content: center;
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .tool-btn {
+                padding: 6px 14px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="grainient-bg" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;"></div>
+
+    <div id="brushCursor" class="brush-cursor"></div>
+
+    <div class="container">
+        <h1>Magic Eraser</h1>
+
+        <div id="editorBox" class="editor-box glass-panel">
+            <div id="dropContent" class="drop-content">
+                <button class="select-btn glass-btn" onclick="document.getElementById('fileInput').click()">
+                    <img src="./public/add.png" alt="add"> Select a Picture
+                </button>
+                <p>or drop an image</p>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+
+            <img id="baseImage" class="base-image hidden" src="">
+            <canvas id="paintCanvas" class="paint-canvas hidden"></canvas>
+            <canvas id="maskCanvas" class="mask-canvas"></canvas>
+
+            <div id="loaderOverlay" class="overlay-wrapper">
+                <div class="loader">
+                    <svg width="100" height="100" viewBox="0 0 100 100">
+                        <defs>
+                            <mask id="clipping">
+                                <polygon points="0,0 100,0 100,100 0,100" fill="black"></polygon>
+                                <polygon points="25,25 75,25 50,75" fill="white"></polygon>
+                                <polygon points="50,25 75,75 25,75" fill="white"></polygon>
+                                <polygon points="35,35 65,35 50,65" fill="white"></polygon>
+                            </mask>
+                        </defs>
+                    </svg>
+                    <div class="box"></div>
+                </div>
+                <div class="generating-text">✨Generating</div>
+            </div>
+        </div>
+
+        <div id="dynamicContainer" class="dynamic-width-container">
+            <div id="uploadingContainer" class="uploading-container hidden">
+                <div class="upload-labels">
+                    <span>Uploading</span>
+                    <span id="progressText">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <div id="brushControl" class="brush-control glass-panel hidden">
+                <span>Brush Size</span>
+                <input type="range" id="brushSize" min="5" max="150" value="45">
+                <span id="brushSizeVal">45%</span>
+
+                <div class="tool-btns">
+                    <button id="drawBtn" class="tool-btn active">Brush</button>
+                    <button id="eraserBtn" class="tool-btn">Eraser</button>
+                    <button id="clearMaskBtn" class="tool-btn">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="generateBtn" class="action-btn glass-btn">Generate</button>
+        <button id="downloadBtn" class="action-btn glass-btn hidden">Download</button>
+    </div>
+
+    <script>
+        const editorBox = document.getElementById('editorBox');
+        const dropContent = document.getElementById('dropContent');
+        const fileInput = document.getElementById('fileInput');
+        const baseImage = document.getElementById('baseImage');
+        const paintCanvas = document.getElementById('paintCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const dynamicContainer = document.getElementById('dynamicContainer');
+        const uploadingContainer = document.getElementById('uploadingContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const brushControl = document.getElementById('brushControl');
+        const brushSize = document.getElementById('brushSize');
+        const brushSizeVal = document.getElementById('brushSizeVal');
+        const drawBtn = document.getElementById('drawBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const clearMaskBtn = document.getElementById('clearMaskBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loaderOverlay = document.getElementById('loaderOverlay');
+        const brushCursor = document.getElementById('brushCursor');
+
+        const ctxPaint = paintCanvas.getContext('2d');
+        const ctxMask = maskCanvas.getContext('2d');
+
+        let isDrawing = false;
+        let originalFile = null;
+        let isEraserMode = false;
+
+        let lastDrawX = 0;
+        let lastDrawY = 0;
+
+        function updateSliderBackground() {
+            const min = brushSize.min || 5;
+            const max = brushSize.max || 150;
+            const val = brushSize.value;
+            const percentage = ((val - min) / (max - min)) * 100;
+            brushSize.style.background = `linear-gradient(to right, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.9) ${percentage}%, rgba(0,0,0,0.5) ${percentage}%, rgba(0,0,0,0.5) 100%)`;
+        }
+
+        updateSliderBackground();
+
+        brushSize.addEventListener('input', (e) => {
+            brushSizeVal.innerText = e.target.value + '%';
+            updateSliderBackground();
+            updateCursorSize();
+        });
+
+        function updateCursorSize() {
+            if (paintCanvas.classList.contains('hidden')) return;
+            const rect = paintCanvas.getBoundingClientRect();
+            const scaleX = rect.width / paintCanvas.width;
+            const logicalSize = parseInt(brushSize.value) * 1.5;
+            const visualSize = logicalSize * scaleX;
+            brushCursor.style.width = visualSize + 'px';
+            brushCursor.style.height = visualSize + 'px';
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            brushCursor.style.left = e.clientX + 'px';
+            brushCursor.style.top = e.clientY + 'px';
+        });
+
+        paintCanvas.addEventListener('mouseenter', () => { brushCursor.style.opacity = '1'; updateCursorSize(); });
+        paintCanvas.addEventListener('mouseleave', () => { brushCursor.style.opacity = '0'; });
+
+        drawBtn.addEventListener('click', () => {
+            isEraserMode = false; drawBtn.classList.add('active'); eraserBtn.classList.remove('active');
+            brushCursor.classList.remove('eraser-mode');
+        });
+
+        eraserBtn.addEventListener('click', () => {
+            isEraserMode = true; eraserBtn.classList.add('active'); drawBtn.classList.remove('active');
+            brushCursor.classList.add('eraser-mode');
+        });
+
+        clearMaskBtn.addEventListener('click', () => { clearPaintLayers(); });
+
+        function clearPaintLayers() {
+            ctxPaint.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+            ctxMask.fillStyle = "black";
+            ctxMask.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+        }
+
+        editorBox.addEventListener('dragover', (e) => { e.preventDefault(); editorBox.style.transform = 'scale(1.02)'; });
+        editorBox.addEventListener('dragleave', () => { editorBox.style.transform = 'scale(1)'; });
+        editorBox.addEventListener('drop', (e) => {
+            e.preventDefault(); editorBox.style.transform = 'scale(1)';
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            originalFile = file;
+            dropContent.style.opacity = '0';
+            setTimeout(() => dropContent.classList.add('hidden'), 300);
+
+            uploadingContainer.classList.remove('hidden');
+            setTimeout(() => { uploadingContainer.style.opacity = '1'; }, 10);
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 15) + 5;
+                if (progress > 100) progress = 100;
+
+                progressFill.style.width = progress + '%';
+                progressText.innerText = progress + '%';
+
+                if (progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        uploadingContainer.style.opacity = '0';
+                        setTimeout(() => uploadingContainer.classList.add('hidden'), 400);
+                        loadImageToCanvas(file);
+                    }, 500);
+                }
+            }, 80);
+        }
+
+        function loadImageToCanvas(file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    paintCanvas.width = img.width;
+                    paintCanvas.height = img.height;
+                    maskCanvas.width = img.width;
+                    maskCanvas.height = img.height;
+
+                    const aspect = img.width / img.height;
+                    let finalWidth = 900;
+                    let finalHeight = finalWidth / aspect;
+
+                    const maxAllowedHeight = window.innerHeight * 0.65;
+                    if (finalHeight > maxAllowedHeight) {
+                        finalHeight = maxAllowedHeight;
+                        finalWidth = finalHeight * aspect;
+                    }
+
+                    editorBox.style.maxWidth = finalWidth + 'px';
+                    editorBox.style.height = finalHeight + 'px';
+
+                    setTimeout(() => { editorBox.classList.add('has-image'); }, 300);
+
+                    baseImage.src = img.src;
+                    clearPaintLayers();
+
+                    setTimeout(() => {
+                        baseImage.classList.remove('hidden');
+                        paintCanvas.classList.remove('hidden');
+                        brushControl.classList.remove('hidden');
+                        updateCursorSize();
+                    }, 500);
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function getMousePos(canvas, evt) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+
+        function setBrushStyle() {
+            const size = parseInt(brushSize.value) * 1.5;
+            ctxPaint.lineCap = 'round'; ctxPaint.lineJoin = 'round'; ctxPaint.lineWidth = size * 2;
+            ctxMask.lineCap = 'round'; ctxMask.lineJoin = 'round'; ctxMask.lineWidth = size * 2;
+
+            if (isEraserMode) {
+                ctxPaint.globalCompositeOperation = 'destination-out'; ctxPaint.strokeStyle = 'rgba(0,0,0,1)';
+                ctxMask.globalCompositeOperation = 'destination-out'; ctxMask.strokeStyle = 'rgba(0,0,0,1)';
+            } else {
+                ctxPaint.globalCompositeOperation = 'source-over'; ctxPaint.strokeStyle = '#E91E63';
+                ctxMask.globalCompositeOperation = 'source-over'; ctxMask.strokeStyle = "white";
+            }
+        }
+
+        paintCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(paintCanvas, e);
+            lastDrawX = pos.x;
+            lastDrawY = pos.y;
+            setBrushStyle();
+
+            ctxPaint.beginPath(); ctxPaint.moveTo(pos.x, pos.y); ctxPaint.lineTo(pos.x, pos.y); ctxPaint.stroke();
+            ctxMask.beginPath(); ctxMask.moveTo(pos.x, pos.y); ctxMask.lineTo(pos.x, pos.y); ctxMask.stroke();
+        });
+
+        paintCanvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(paintCanvas, e);
+
+            const dx = pos.x - lastDrawX;
+            const dy = pos.y - lastDrawY;
+            if (dx * dx + dy * dy < 4) return;
+
+            lastDrawX = pos.x;
+            lastDrawY = pos.y;
+
+            ctxPaint.lineTo(pos.x, pos.y);
+            ctxPaint.stroke();
+            ctxPaint.beginPath();
+            ctxPaint.moveTo(pos.x, pos.y);
+
+            ctxMask.lineTo(pos.x, pos.y);
+            ctxMask.stroke();
+            ctxMask.beginPath();
+            ctxMask.moveTo(pos.x, pos.y);
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDrawing) { ctxPaint.beginPath(); ctxMask.beginPath(); isDrawing = false; }
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            if (!originalFile) return;
+
+            loaderOverlay.classList.add('active');
+            generateBtn.disabled = true; generateBtn.innerText = "Processing...";
+            brushControl.style.opacity = '0.5'; brushControl.style.pointerEvents = 'none';
+            brushCursor.style.opacity = '0';
+
+            maskCanvas.toBlob(async (maskBlob) => {
+                const formData = new FormData();
+                formData.append("image", originalFile);
+                formData.append("mask", maskBlob, "mask.png");
+
+                try {
+                    const response = await fetch("https://magic-eraser.onrender.com/remove-object/", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const resultBlob = await response.blob();
+                        const imgUrl = URL.createObjectURL(resultBlob);
+
+                        setTimeout(() => {
+                            loaderOverlay.classList.remove('active');
+                            generateBtn.classList.add('hidden');
+
+                            baseImage.src = imgUrl;
+                            clearPaintLayers();
+
+                            downloadBtn.classList.remove('hidden');
+                            brushControl.classList.add('hidden');
+                            paintCanvas.style.pointerEvents = 'none';
+
+                            downloadBtn.onclick = () => {
+                                const a = document.createElement('a'); a.href = imgUrl; a.download = 'doctor_codiey_magic_eraser_result.png'; a.click();
+                            };
+                        }, 800);
+                    } else { alert("Error processing image."); resetState(); }
+                } catch (error) { alert("Backend connection failed."); resetState(); }
+            }, "image/png");
+        });
+
+        function resetState() {
+            loaderOverlay.classList.remove('active');
+            generateBtn.disabled = false; generateBtn.innerText = "Generate";
+            brushControl.style.opacity = '1'; brushControl.style.pointerEvents = 'auto';
+            brushCursor.style.opacity = '1';
+        }
+
+        window.addEventListener('resize', updateCursorSize);
+    </script>
+
+    <script type="module">
+        import { Renderer, Program, Mesh, Triangle } from 'https://cdn.jsdelivr.net/npm/ogl@0.0.117/+esm';
+
+        const hexToRgb = hex => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            if (!result) return [1, 1, 1];
+            return [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255];
+        };
+
+        const vertex = `#version 300 es
+        in vec2 position;
+        void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+        }`;
+
+        const fragment = `#version 300 es
+        precision highp float;
+        uniform vec2 iResolution;
+        uniform float iTime;
+        uniform float uTimeSpeed;
+        uniform float uColorBalance;
+        uniform float uWarpStrength;
+        uniform float uWarpFrequency;
+        uniform float uWarpSpeed;
+        uniform float uWarpAmplitude;
+        uniform float uBlendAngle;
+        uniform float uBlendSoftness;
+        uniform float uRotationAmount;
+        uniform float uNoiseScale;
+        uniform float uGrainAmount;
+        uniform float uGrainScale;
+        uniform float uGrainAnimated;
+        uniform float uContrast;
+        uniform float uGamma;
+        uniform float uSaturation;
+        uniform vec2 uCenterOffset;
+        uniform float uZoom;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+        out vec4 fragColor;
+        #define S(a,b,t) smoothstep(a,b,t)
+        mat2 Rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);} 
+        vec2 hash(vec2 p){p=vec2(dot(p,vec2(2127.1,81.17)),dot(p,vec2(1269.5,283.37)));return fract(sin(p)*43758.5453);} 
+        float noise(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);float n=mix(mix(dot(-1.0+2.0*hash(i+vec2(0.0,0.0)),f-vec2(0.0,0.0)),dot(-1.0+2.0*hash(i+vec2(1.0,0.0)),f-vec2(1.0,0.0)),u.x),mix(dot(-1.0+2.0*hash(i+vec2(0.0,1.0)),f-vec2(0.0,1.0)),dot(-1.0+2.0*hash(i+vec2(1.0,1.0)),f-vec2(1.0,1.0)),u.x),u.y);return 0.5+0.5*n;}
+        void mainImage(out vec4 o, vec2 C){
+            float t=iTime*uTimeSpeed;
+            vec2 uv=C/iResolution.xy;
+            float ratio=iResolution.x/iResolution.y;
+            vec2 tuv=uv-0.5+uCenterOffset;
+            tuv/=max(uZoom,0.001);
+
+            float degree=noise(vec2(t*0.1,tuv.x*tuv.y)*uNoiseScale);
+            tuv.y*=1.0/ratio;
+            tuv*=Rot(radians((degree-0.5)*uRotationAmount+180.0));
+            tuv.y*=ratio;
+
+            float frequency=uWarpFrequency;
+            float ws=max(uWarpStrength,0.001);
+            float amplitude=uWarpAmplitude/ws;
+            float warpTime=t*uWarpSpeed;
+            tuv.x+=sin(tuv.y*frequency+warpTime)/amplitude;
+            tuv.y+=sin(tuv.x*(frequency*1.5)+warpTime)/(amplitude*0.5);
+
+            vec3 colLav=uColor1;
+            vec3 colOrg=uColor2;
+            vec3 colDark=uColor3;
+            float b=uColorBalance;
+            float s=max(uBlendSoftness,0.0);
+            mat2 blendRot=Rot(radians(uBlendAngle));
+            float blendX=(tuv*blendRot).x;
+            float edge0=-0.3-b-s;
+            float edge1=0.2-b+s;
+            float v0=0.5-b+s;
+            float v1=-0.3-b-s;
+            vec3 layer1=mix(colDark,colOrg,S(edge0,edge1,blendX));
+            vec3 layer2=mix(colOrg,colLav,S(edge0,edge1,blendX));
+            vec3 col=mix(layer1,layer2,S(v0,v1,tuv.y));
+
+            vec2 grainUv=uv*max(uGrainScale,0.001);
+            if(uGrainAnimated>0.5){grainUv+=vec2(iTime*0.05);} 
+            float grain=fract(sin(dot(grainUv,vec2(12.9898,78.233)))*43758.5453);
+            col+=(grain-0.5)*uGrainAmount;
+
+            col=(col-0.5)*uContrast+0.5;
+            float luma=dot(col,vec3(0.2126,0.7152,0.0722));
+            col=mix(vec3(luma),col,uSaturation);
+            col=pow(max(col,0.0),vec3(1.0/max(uGamma,0.001)));
+            col=clamp(col,0.0,1.0);
+
+            o=vec4(col,1.0);
+        }
+        void main(){
+            vec4 o=vec4(0.0);
+            mainImage(o,gl_FragCoord.xy);
+            fragColor=o;
+        }`;
+
+        const container = document.getElementById('grainient-bg');
+        const renderer = new Renderer({
+            webgl: 2,
+            alpha: true,
+            antialias: false,
+            dpr: Math.min(window.devicePixelRatio || 1, 2)
+        });
+
+        const gl = renderer.gl;
+        const canvas = gl.canvas;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        container.appendChild(canvas);
+
+        const geometry = new Triangle(gl);
+        const program = new Program(gl, {
+            vertex,
+            fragment,
+            uniforms: {
+                iTime: { value: 0 },
+                iResolution: { value: new Float32Array([1, 1]) },
+                uTimeSpeed: { value: 0.25 },
+                uColorBalance: { value: -0.25 },
+                uWarpStrength: { value: 0.65 },
+                uWarpFrequency: { value: 0.0 },
+                uWarpSpeed: { value: 4.2 },
+                uWarpAmplitude: { value: 50.0 },
+                uBlendAngle: { value: -110.0 },
+                uBlendSoftness: { value: 0.43 },
+                uRotationAmount: { value: 500.0 },
+                uNoiseScale: { value: 2.0 },
+                uGrainAmount: { value: 0.0 },
+                uGrainScale: { value: 0.2 },
+                uGrainAnimated: { value: 0.0 },
+                uContrast: { value: 1.5 },
+                uGamma: { value: 1.0 },
+                uSaturation: { value: 1.0 },
+                uCenterOffset: { value: new Float32Array([0.0, 0.0]) },
+                uZoom: { value: 0.9 },
+                uColor1: { value: new Float32Array(hexToRgb('#ff2d55')) }, // Pink
+                uColor2: { value: new Float32Array(hexToRgb('#0e0e15')) }, // Dark
+                uColor3: { value: new Float32Array(hexToRgb('#825cff')) }  // Purple
+            }
+        });
+
+        const mesh = new Mesh(gl, { geometry, program });
+
+        const setSize = () => {
+            const rect = container.getBoundingClientRect();
+            const width = Math.max(1, Math.floor(rect.width));
+            const height = Math.max(1, Math.floor(rect.height));
+            renderer.setSize(width, height);
+            const res = program.uniforms.iResolution.value;
+            res[0] = gl.drawingBufferWidth;
+            res[1] = gl.drawingBufferHeight;
+        };
+
+        window.addEventListener('resize', setSize);
+        setSize();
+
+        let raf = 0;
+        const t0 = performance.now();
+        const loop = t => {
+            program.uniforms.iTime.value = (t - t0) * 0.001;
+            renderer.render({ scene: mesh });
+            raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+    </script>
+</body>
+
+</html>
