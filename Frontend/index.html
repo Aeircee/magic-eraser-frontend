@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Doctor Codiey - Magic Eraser</title>
+    <link rel="icon" type="image/png" href="./favicon.ico">
+    <title>Magic Eraser</title>
 
     <style>
         /* ================= FONTS ================= */
@@ -59,6 +60,7 @@
             overflow-y: auto;
             padding: 40px 20px;
             box-sizing: border-box;
+            overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile */
         }
 
         h1 {
@@ -559,6 +561,14 @@
                 padding: 6px 14px;
                 font-size: 13px;
             }
+
+            /* FIX FOR MOBILE IMAGE CUT ISSUE: Reduced border radius so corners look natural */
+            .base-image, .paint-canvas, .overlay-wrapper, .glass-panel {
+                border-radius: 20px !important;
+            }
+            .brush-cursor {
+                display: none; /* Hide custom cursor on mobile to avoid lag */
+            }
         }
     </style>
 </head>
@@ -792,13 +802,22 @@
             reader.readAsDataURL(file);
         }
 
-        function getMousePos(canvas, evt) {
+        function getPos(canvas, evt) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            
+            let clientX = evt.clientX;
+            let clientY = evt.clientY;
+
+            if (evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX;
+                clientY = evt.touches[0].clientY;
+            }
+
             return {
-                x: (evt.clientX - rect.left) * scaleX,
-                y: (evt.clientY - rect.top) * scaleY
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
 
@@ -816,21 +835,23 @@
             }
         }
 
-        paintCanvas.addEventListener('mousedown', (e) => {
+        const startDrawing = (e) => {
+            if (e.type === 'touchstart') e.preventDefault(); 
             isDrawing = true;
-            const pos = getMousePos(paintCanvas, e);
+            const pos = getPos(paintCanvas, e);
             lastDrawX = pos.x;
             lastDrawY = pos.y;
             setBrushStyle();
 
             ctxPaint.beginPath(); ctxPaint.moveTo(pos.x, pos.y); ctxPaint.lineTo(pos.x, pos.y); ctxPaint.stroke();
             ctxMask.beginPath(); ctxMask.moveTo(pos.x, pos.y); ctxMask.lineTo(pos.x, pos.y); ctxMask.stroke();
-        });
+        };
 
-        paintCanvas.addEventListener('mousemove', (e) => {
+        const draw = (e) => {
             if (!isDrawing) return;
-            const pos = getMousePos(paintCanvas, e);
+            if (e.type === 'touchmove') e.preventDefault(); 
 
+            const pos = getPos(paintCanvas, e);
             const dx = pos.x - lastDrawX;
             const dy = pos.y - lastDrawY;
             if (dx * dx + dy * dy < 4) return;
@@ -847,11 +868,20 @@
             ctxMask.stroke();
             ctxMask.beginPath();
             ctxMask.moveTo(pos.x, pos.y);
-        });
+        };
 
-        window.addEventListener('mouseup', () => {
+        const stopDrawing = () => {
             if (isDrawing) { ctxPaint.beginPath(); ctxMask.beginPath(); isDrawing = false; }
-        });
+        };
+
+        // Attach Mouse & Touch Events
+        paintCanvas.addEventListener('mousedown', startDrawing);
+        paintCanvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+
+        paintCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+        paintCanvas.addEventListener('touchmove', draw, { passive: false });
+        window.addEventListener('touchend', stopDrawing);
 
         generateBtn.addEventListener('click', async () => {
             if (!originalFile) return;
@@ -1002,7 +1032,8 @@
             vec4 o=vec4(0.0);
             mainImage(o,gl_FragCoord.xy);
             fragColor=o;
-        }`;
+        }
+        `;
 
         const container = document.getElementById('grainient-bg');
         const renderer = new Renderer({
